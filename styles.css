@@ -1,0 +1,39 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  text-align: center;
+  background: url("./bg.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+canvas {
+  border: 1px solid #000;
+  scale: 1;
+  background-color: #f5deb3;
+}
+
+#mainDiv {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+#courtDiv {
+  width: 680px;
+  height: 1015px;
+  display: flex;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+#controlsDiv {
+  padding-top: 20px;
+  padding-bottom: 20px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border: 1px solid #000;
+}
+
+#buttonsDiv {
+  padding-top: 10px;
+}

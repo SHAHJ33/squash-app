@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Squash Pro</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body>
+    <h1>Squash Pro</h1>
+    <h2 id="timer">00:00</h2>
+    <div id="mainDiv">
+      <div id="controlsDiv">
+        <input type="text" id="sessionName" placeholder="Session Name" />
+        <div id="buttonsDiv">
+          <button id="startSessionBtn">Start Session</button>
+          <button id="endSessionBtn" style="display: none">End Session</button>
+          <button id="resumeSessionBtn" style="display: none">
+            Resume Session
+          </button>
+        </div>
+        <div id="sessionsDiv">
+          <h4>Saved Sessions</h4>
+          <ul id="savedSessionsList"></ul>
+        </div>
+      </div>
+      <div id="courtDiv">
+        <canvas id="courtCanvas" width="680" height="1015"></canvas>
+      </div>
+    </div>
+    <script src="./script.js"></script>
+  </body>
+</html>
