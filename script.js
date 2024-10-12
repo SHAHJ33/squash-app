@@ -7,27 +7,30 @@ const endSessionBtn = document.getElementById("endSessionBtn");
 const resumeSessionBtn = document.getElementById("resumeSessionBtn");
 const savedSessionsList = document.getElementById("savedSessionsList");
 const clearCanvasBtn = document.getElementById("clearCanvasBtn");
+const shapeNameInput = document.getElementById("shapeName");
+const shapeDurationInput = document.getElementById("shapeDuration");
 
 let selectedShape = "circle";
 let markings = [];
 let sessionName = "";
 let currentTime = 0; // elapsed time
+let totalTime = 1000;
 let isSessionActive = false;
 let timerId = null;
 let isPaused = false;
 let savedSessions = [];
 
-window.onload = function() {
+window.onload = function () {
   drawCourt();
-}
+};
 
 // Draw the court
 function drawCourt() {
   const courtBackground = "#f5deb3"; // Light wood color
   const lineColor = "#ff0000"; // Red for lines
 
-//   ctx.fillStyle = courtBackground;
-//   ctx.fillRect(20, 20, 640, 975); // Draw the floor of the court
+  //   ctx.fillStyle = courtBackground;
+  //   ctx.fillRect(20, 20, 640, 975); // Draw the floor of the court
 
   ctx.strokeStyle = lineColor;
   ctx.lineWidth = 2;
@@ -47,7 +50,14 @@ function drawCourt() {
   ctx.strokeRect(20, 588, 160, 160); // Left service box
   ctx.strokeRect(510, 588, 150, 168); // Right service box
 
- markings.forEach(drawShape);
+  markings.forEach((mark) => {
+    const startTime = mark.time;
+    const endTime = mark.time + mark.duration;
+
+    if (currentTime >= startTime && currentTime <= endTime) {
+      drawShape(mark);
+    }
+  });
 }
 
 // Draw shapes on the court
@@ -65,45 +75,56 @@ function drawShape(mark) {
   }
 }
 
+let position = {
+  x: null,
+  y: null,
+};
 
 // Place shape on click
 canvas.addEventListener("click", (event) => {
   if (!isSessionActive) return;
 
+   // Pause the session
+   isPaused = true;
+   toggleButtons();
+
   const rect = canvas.getBoundingClientRect();
-  const position = {
+  position = {
     x: event.clientX - rect.left,
     y: event.clientY - rect.top,
   };
 
-  // Pause the session
-  isPaused = true;
-
   // Save the shape and current time
-  markings.push({ type: selectedShape, position, time: currentTime });
   drawShape({ type: selectedShape, position });
 
-  // Resume after a brief pause
-  setTimeout(() => {
-    isPaused = false;
-  }, 1000); // Pause for 1 second
+  // save the shape here
+  const shapeName = shapeNameInput.value;
+  const shapeDuration = shapeDurationInput.valueAsNumber;
+
+  // shapeType = get this from the side menu
+  markings.push({
+    name: shapeName,
+    type: selectedShape,
+    position,
+    time: currentTime,
+    duration: shapeDuration,
+  });
+  
 });
 
 // Start session
 startSessionBtn.addEventListener("click", () => {
+  reset();
+
   sessionName = sessionNameInput.value;
 
-    if( savedSessions.find( s => s.name == sessionName) ) 
-    {
-        return;
-    }
-
+  if (savedSessions.find((s) => s.name == sessionName)) {
+    return;
+  }
 
   if (sessionName) {
     isSessionActive = true;
-    currentTime = 0;
-    markings = [];
-    clearCanvas();
+    isPaused = false;
     startTimer();
     toggleButtons();
   }
@@ -111,24 +132,20 @@ startSessionBtn.addEventListener("click", () => {
 
 // Stop session
 endSessionBtn.addEventListener("click", () => {
-  isSessionActive = false;
-  clearInterval(timerId);
   saveSession();
-  markings = [];
-  clearCanvas();
-  toggleButtons();
-  currentTime = 0;
-  updateTimerDisplay();
+  reset();
 });
 
 // Resume session
 resumeSessionBtn.addEventListener("click", () => {
   isPaused = false;
+  toggleButtons();
+  clearCanvas();
 });
 
 // Save session to list
 function saveSession() {
-  const newSession = { name: sessionName, time: currentTime, markings };
+  const newSession = { name: sessionName, totalTime: currentTime, markings };
   savedSessions.push(newSession);
   updateSavedSessionsList();
 }
@@ -138,7 +155,7 @@ function updateSavedSessionsList() {
   savedSessionsList.innerHTML = "";
   savedSessions.forEach((session, index) => {
     const li = document.createElement("li");
-    li.textContent = `${session.name} - ${formatTime(session.time)}`;
+    li.textContent = `${session.name} - ${formatTime(session.totalTime)}`;
 
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
@@ -155,52 +172,57 @@ function updateSavedSessionsList() {
 }
 
 function deleteSession(session) {
-    savedSessions = savedSessions.filter(s => s.name != session.name);
-    updateSavedSessionsList();
-    markings = [];  
-    clearCanvas();
+  savedSessions = savedSessions.filter((s) => s.name != session.name);
+  updateSavedSessionsList();
+
+  if (sessionName == session.name) {
+    reset();
+  }
 }
 
 function loadSession(session) {
+  reset();
+
+  sessionName = session.name;
   sessionNameInput.innerHTML = session.name;
+
+  totalTime = session.totalTime;
   markings = session.markings;
-  clearCanvas()
+  isSessionActive = true;
+  isPaused = false;
+
+  startTimer();
+  disabeButtons();
 }
 
-// Replay session
-function replaySession(session) {
-  return;
-  clearCanvas();
-  drawCourt();
+function reset() {
+  isSessionActive = false;
+  isPaused = false;
   currentTime = 0;
-  const replayDuration = session.totalTime;
-
-  timerId = setInterval(() => {
-    if (currentTime >= replayDuration) {
-      clearInterval(timerId);
-      return;
-    }
-    currentTime++;
-    updateTimerDisplay();
-  }, 1000);
-
-  session.markings.forEach((mark) => {
-    setTimeout(() => {
-      drawShape(mark);
-    }, mark.time * 1000);
-  });
+  totalTime = 1000;
+  updateTimerDisplay();
+  markings = [];
+  clearCanvas();
+  if (timerId != null) {
+    clearInterval(timerId);
+    timerId = null;
+  }
+  toggleButtons();
 }
 
 // Start the timer
 function startTimer() {
   timerId = setInterval(() => {
-    if (!isPaused) {
+
+    if(currentTime >= totalTime) {
+      reset();
+      return;
+    }
+
+    if (isSessionActive && !isPaused) {
       currentTime++;
       updateTimerDisplay();
-    //   if (currentTime >= totalTime) {
-    //     clearInterval(timerId);
-    //     endSessionBtn.click(); // End session automatically
-    //   }
+      clearCanvas();
     }
   }, 1000);
 }
@@ -234,4 +256,8 @@ function toggleButtons() {
     isSessionActive && isPaused ? "inline" : "none";
 }
 
-
+function disabeButtons() {
+  startSessionBtn.style.display = "none";
+  endSessionBtn.style.display = "none";
+  resumeSessionBtn.style.display = "none";
+}
