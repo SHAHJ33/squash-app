@@ -10,7 +10,7 @@ const clearCanvasBtn = document.getElementById("clearCanvasBtn");
 const shapeNameInput = document.getElementById("shapeName");
 const shapeDurationInput = document.getElementById("shapeDuration");
 
-let selectedShape = "circle";
+let selectedShape = "square";
 let markings = [];
 let sessionName = "";
 let currentTime = 0; // elapsed time
@@ -72,6 +72,9 @@ function drawShape(mark) {
     ctx.beginPath();
     ctx.arc(position.x, position.y, 20, 0, 2 * Math.PI); // Circle with radius 20
     ctx.fill();
+  } else if (type === "square") {
+    ctx.beginPath();
+    ctx.fillRect(position.x-10, position.y-10, 20, 20);
   }
 }
 
