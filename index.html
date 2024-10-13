@@ -12,13 +12,25 @@
     <h2 id="timer">00:00</h2>
     <div id="mainDiv">
       <div id="controlsDiv">
-        <input type="text" id="sessionName" placeholder="Session Name" />
+        <h4>Set Editor</h4>
+        <input type="text" id="setName" placeholder="Set Name" value="" />
+        <input
+          type="number"
+          id="setDuration"
+          placeholder="Set Duration(s)"
+          value=""
+          step="0.1"
+        />
+        <input
+          type="number"
+          id="setReposition"
+          placeholder="Reposition Time(s)"
+          value=""
+          step="0.1"
+        />
         <div id="buttonsDiv">
-          <button id="startSessionBtn">Start Session</button>
-          <button id="endSessionBtn" style="display: none">End Session</button>
-          <button id="resumeSessionBtn" style="display: none">
-            Resume Session
-          </button>
+          <button id="saveSetBtn">Save</button>
+          <button id="resetSetBtn">Reset</button>
         </div>
         <div id="sessionsDiv">
           <h4>Saved Sessions</h4>
@@ -29,9 +41,20 @@
         <canvas id="courtCanvas" width="680" height="1015"></canvas>
       </div>
       <div id="editorDiv">
-        <div>
-          <input type="text" id="shapeName" placeholder="Name" />
-          <input type="number" id="shapeDuration" placeholder="Duration (seconds)" />
+        <h4>Mark Editor</h4>
+        <div id="markEditor" style="display: none;">
+          <div>
+            <input type="text" id="markName" placeholder="Name" onsubmit=/>
+            <input
+              type="number"
+              id="markDuration"
+              placeholder="Duration (seconds)"
+            />
+          </div>
+          <div id="buttonsDiv">
+            <button id="saveMarkBtn">Save</button>
+            <button id="deleteMarkBtn">Delete</button>
+          </div>
         </div>
       </div>
     </div>

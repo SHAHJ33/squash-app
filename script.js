@@ -1,28 +1,36 @@
 const canvas = document.getElementById("courtCanvas");
 const ctx = canvas.getContext("2d");
-const sessionNameInput = document.getElementById("sessionName");
+const setNameInput = document.getElementById("setName");
+const setDurationInput = document.getElementById("setDuration");
+const setRepositionInput = document.getElementById("setReposition");
 const timerDisplay = document.getElementById("timer");
-const startSessionBtn = document.getElementById("startSessionBtn");
-const endSessionBtn = document.getElementById("endSessionBtn");
-const resumeSessionBtn = document.getElementById("resumeSessionBtn");
 const savedSessionsList = document.getElementById("savedSessionsList");
-const clearCanvasBtn = document.getElementById("clearCanvasBtn");
-const shapeNameInput = document.getElementById("shapeName");
-const shapeDurationInput = document.getElementById("shapeDuration");
+const markNameInput = document.getElementById("markName");
+const markDurationInput = document.getElementById("markDuration");
 
-let selectedShape = "square";
+const saveSetBtn = document.getElementById("saveSetBtn");
+const resetSetBtn = document.getElementById("resetSetBtn");
+
+const markEditor = document.getElementById("markEditor");
+const saveMarkBtn = document.getElementById("saveMarkBtn");
+const deleteMarkBtn = document.getElementById("deleteMarkBtn");
+
+let selectedMark = "square";
 let markings = [];
-let sessionName = "";
+let setName = "";
 let currentTime = 0; // elapsed time
 let totalTime = 1000;
+let repositionTime = 3;
 let isSessionActive = false;
 let timerId = null;
 let isPaused = false;
-let savedSessions = [];
+let savedSets = [];
 
 window.onload = function () {
-  drawCourt();
+  reset();
 };
+
+let markToDraw = null;
 
 // Draw the court
 function drawCourt() {
@@ -50,14 +58,18 @@ function drawCourt() {
   ctx.strokeRect(20, 588, 160, 160); // Left service box
   ctx.strokeRect(510, 588, 150, 168); // Right service box
 
-  markings.forEach((mark) => {
-    const startTime = mark.time;
-    const endTime = mark.time + mark.duration;
+  // markings.forEach((mark) => {
+  //   const startTime = mark.time;
+  //   const endTime = mark.time + mark.duration;
 
-    if (currentTime >= startTime && currentTime <= endTime) {
-      drawShape(mark);
-    }
-  });
+  //   if (currentTime >= startTime && currentTime <= endTime) {
+  //     drawShape(mark);
+  //   }
+  // });
+
+  if (markToDraw != null) {
+    drawShape(markToDraw);
+  }
 }
 
 // Draw shapes on the court
@@ -74,7 +86,7 @@ function drawShape(mark) {
     ctx.fill();
   } else if (type === "square") {
     ctx.beginPath();
-    ctx.fillRect(position.x-10, position.y-10, 20, 20);
+    ctx.fillRect(position.x - 10, position.y - 10, 20, 20);
   }
 }
 
@@ -83,13 +95,16 @@ let position = {
   y: null,
 };
 
+let currentSelectedMark = null;
 // Place shape on click
 canvas.addEventListener("click", (event) => {
-  if (!isSessionActive) return;
+  if (isSessionActive) return;
 
-   // Pause the session
-   isPaused = true;
-   toggleButtons();
+  if(currentSelectedMark != null) return;
+
+  // Pause the session
+  isPaused = true;
+  toggleButtons();
 
   const rect = canvas.getBoundingClientRect();
   position = {
@@ -98,103 +113,157 @@ canvas.addEventListener("click", (event) => {
   };
 
   // Save the shape and current time
-  drawShape({ type: selectedShape, position });
+  drawShape({ type: selectedMark, position });
 
-  // save the shape here
-  const shapeName = shapeNameInput.value;
-  const shapeDuration = shapeDurationInput.valueAsNumber;
+  // show the editor
+  markEditor.style.display = "inline";
 
-  // shapeType = get this from the side menu
-  markings.push({
-    name: shapeName,
-    type: selectedShape,
+   // save the shape here
+   markNameInput.value = "";
+   markDurationInput.valueAsNumber = "";
+
+  currentSelectedMark = {
+    name: markNameInput.value,
+    type: selectedMark,
     position,
-    time: currentTime,
-    duration: shapeDuration,
-  });
-  
+    duration: markDurationInput.valueAsNumber,
+  };
+
+});
+
+saveMarkBtn.addEventListener("click", () => {
+  if (currentSelectedMark != null) {
+    currentSelectedMark.duration = markDurationInput.valueAsNumber;
+    currentSelectedMark.name = markNameInput.value;
+    markings.push(currentSelectedMark);
+
+    currentSelectedMark = null;
+    markEditor.style.display = "none";
+  }
+});
+
+deleteMarkBtn.addEventListener("click", () => {
+  currentSelectedMark = null;
+  markEditor.style.display = "none";
+  clearCanvas();
 });
 
 // Start session
-startSessionBtn.addEventListener("click", () => {
+/*
+saveSetBtn.addEventListener("click", () => {
   reset();
 
-  sessionName = sessionNameInput.value;
+  setName = sessionNameInput.value;
 
-  if (savedSessions.find((s) => s.name == sessionName)) {
+  if (savedSets.find((s) => s.name == setName)) {
     return;
   }
 
-  if (sessionName) {
+  if (setName) {
     isSessionActive = true;
     isPaused = false;
     startTimer();
     toggleButtons();
   }
 });
-
+*/
 // Stop session
-endSessionBtn.addEventListener("click", () => {
-  saveSession();
+saveSetBtn.addEventListener("click", () => {
+  if (setNameInput.value == "") return;
+
+  if (setDurationInput.value == "") return;
+
+  if (setRepositionInput.value == "") return;
+
+  if (savedSets.find((s) => s.name == setNameInput.value)) {
+    return;
+  }
+
+  if (markings.length == 0) {
+    console.log("no markings");
+    return;
+  }
+
+  saveSet();
+  reset();
+
+  setNameInput.value = "";
+  setDurationInput.value = "";
+  setRepositionInput.value = "";
+});
+
+resetSetBtn.addEventListener("click", () => {
+  setNameInput.value = "";
+  setDurationInput.value = "";
+  setRepositionInput.value = "";
+  markings = [];
   reset();
 });
 
 // Resume session
-resumeSessionBtn.addEventListener("click", () => {
-  isPaused = false;
-  toggleButtons();
-  clearCanvas();
-});
+// resumeSessionBtn.addEventListener("click", () => {
+//   isPaused = false;
+//   toggleButtons();
+//   clearCanvas();
+// });
 
 // Save session to list
-function saveSession() {
-  const newSession = { name: sessionName, totalTime: currentTime, markings };
-  savedSessions.push(newSession);
-  updateSavedSessionsList();
+function saveSet() {
+  const newSet = {
+    name: setNameInput.value,
+    duration: setDurationInput.value,
+    reposition: setRepositionInput.value,
+    markings,
+  };
+  savedSets.push(newSet);
+  updateSetsList();
 }
 
 // Update saved sessions list
-function updateSavedSessionsList() {
+function updateSetsList() {
   savedSessionsList.innerHTML = "";
-  savedSessions.forEach((session, index) => {
+  savedSets.forEach((set, index) => {
     const li = document.createElement("li");
-    li.textContent = `${session.name} - ${formatTime(session.totalTime)}`;
+    li.textContent = `${set.name} - ${formatTime(set.duration)}`;
 
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.onclick = () => deleteSession(session);
+    deleteButton.onclick = () => deleteSet(set);
     li.appendChild(deleteButton);
 
     const loadButton = document.createElement("button");
-    loadButton.textContent = "Load";
-    loadButton.onclick = () => loadSession(session);
+    loadButton.textContent = "Replay";
+    loadButton.onclick = () => replaySet(set);
     li.appendChild(loadButton);
 
     savedSessionsList.appendChild(li);
   });
 }
 
-function deleteSession(session) {
-  savedSessions = savedSessions.filter((s) => s.name != session.name);
-  updateSavedSessionsList();
+function deleteSet(set) {
+  savedSets = savedSets.filter((s) => s.name != set.name);
+  updateSetsList();
 
-  if (sessionName == session.name) {
+  if (setName == set.name) {
     reset();
   }
 }
 
-function loadSession(session) {
+function replaySet(set) {
   reset();
 
-  sessionName = session.name;
-  sessionNameInput.innerHTML = session.name;
+  setName = set.name;
+  setNameInput.value = set.name;
 
-  totalTime = session.totalTime;
-  markings = session.markings;
+  repositionTime = set.reposition;
+  totalTime = set.duration;
+  markings = set.markings;
   isSessionActive = true;
   isPaused = false;
+  currentTime = 0;
 
   startTimer();
+  startReposition();
   disabeButtons();
 }
 
@@ -203,21 +272,25 @@ function reset() {
   isPaused = false;
   currentTime = 0;
   totalTime = 1000;
-  updateTimerDisplay();
   markings = [];
-  clearCanvas();
+  markToDraw = null;
+  currentSelectedMark = null;
+  updateTimerDisplay();
+  clearTimeout(markTimeout);
+  clearTimeout(repositionTimeout);
   if (timerId != null) {
     clearInterval(timerId);
     timerId = null;
   }
+  clearCanvas();
   toggleButtons();
+  markEditor.style.display = "none";
 }
 
 // Start the timer
 function startTimer() {
   timerId = setInterval(() => {
-
-    if(currentTime >= totalTime) {
+    if (currentTime >= totalTime) {
       reset();
       return;
     }
@@ -225,9 +298,31 @@ function startTimer() {
     if (isSessionActive && !isPaused) {
       currentTime++;
       updateTimerDisplay();
-      clearCanvas();
     }
   }, 1000);
+}
+
+let repositionTimeout = null;
+// 1
+function startReposition() {
+  clearTimeout(markTimeout);
+  repositionTimeout = setTimeout(() => {
+    let rnd = Math.floor(Math.random() * markings.length);
+    showMarking(markings[rnd]);
+  }, repositionTime * 1000);
+}
+
+let markTimeout = null;
+// 2
+function showMarking(mark) {
+  clearTimeout(repositionTimeout);
+  markToDraw = mark;
+  clearCanvas();
+  markTimeout = setTimeout(() => {
+    markToDraw = null;
+    clearCanvas();
+    startReposition();
+  }, mark.duration * 1000);
 }
 
 // Update timer display
@@ -253,14 +348,12 @@ function clearCanvas() {
 
 // Toggle buttons visibility
 function toggleButtons() {
-  startSessionBtn.style.display = isSessionActive ? "none" : "inline";
-  endSessionBtn.style.display = isSessionActive ? "inline" : "none";
-  resumeSessionBtn.style.display =
-    isSessionActive && isPaused ? "inline" : "none";
+  // startSessionBtn.style.display = isSessionActive ? "none" : "inline";
+  // endSessionBtn.style.display = isSessionActive ? "inline" : "none";
+  // resumeSessionBtn.style.display =
+  //   isSessionActive && isPaused ? "inline" : "none";
 }
 
 function disabeButtons() {
-  startSessionBtn.style.display = "none";
-  endSessionBtn.style.display = "none";
-  resumeSessionBtn.style.display = "none";
+  saveSetBtn.style.display = "disable";
 }
