@@ -28,7 +28,7 @@ let isPaused = false;
 let savedSets = [];
 
 const OUTLINE_COLOR = "#FF0000";
-const MARK_COLOR = "FFFFFF"; 
+const MARK_COLOR = "#FFFFFF"; 
 
 window.onload = function () {
   reset();
@@ -155,6 +155,7 @@ canvas.addEventListener("click", (event) => {
     markEditor.style.display = "inline";
     markNameInput.value = "Short";
     markDurationInput.valueAsNumber = 2;
+    colorPicker.value = MARK_COLOR;
 
     currentSelectedMark = {
       id: Date.now(),
