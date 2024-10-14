@@ -50,3 +50,7 @@ canvas {
   min-width: 200px;
   border: 1px solid #000;
 }
+
+#color-picker {
+  margin-top: 10px;
+}

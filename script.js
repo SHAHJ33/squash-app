@@ -14,8 +14,9 @@ const resetSetBtn = document.getElementById("resetSetBtn");
 const markEditor = document.getElementById("markEditor");
 const saveMarkBtn = document.getElementById("saveMarkBtn");
 const deleteMarkBtn = document.getElementById("deleteMarkBtn");
+const colorPicker = document.getElementById("shape-color");
 
-let selectedMark = "square";
+let shape = "square";
 let markings = [];
 let setName = "";
 let currentTime = 0; // elapsed time
@@ -26,6 +27,9 @@ let timerId = null;
 let isPaused = false;
 let savedSets = [];
 
+const OUTLINE_COLOR = "#FF0000";
+const MARK_COLOR = "FFFFFF"; 
+
 window.onload = function () {
   reset();
 };
@@ -34,6 +38,8 @@ let markToDraw = null;
 
 // Draw the court
 function drawCourt() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   const courtBackground = "#f5deb3"; // Light wood color
   const lineColor = "#ff0000"; // Red for lines
 
@@ -58,27 +64,24 @@ function drawCourt() {
   ctx.strokeRect(20, 588, 160, 160); // Left service box
   ctx.strokeRect(510, 588, 150, 168); // Right service box
 
-  // markings.forEach((mark) => {
-  //   const startTime = mark.time;
-  //   const endTime = mark.time + mark.duration;
-
-  //   if (currentTime >= startTime && currentTime <= endTime) {
-  //     drawShape(mark);
-  //   }
-  // });
-
-  if (markToDraw != null) {
-    drawShape(markToDraw);
+  if (isSessionActive && !isPaused) {
+    if (markToDraw != null) {
+      drawShape(markToDraw);
+    }
+  } else {
+    markings.forEach((mark) => {
+      drawShape(mark);
+    });
   }
 }
 
 // Draw shapes on the court
 function drawShape(mark) {
-  ctx.strokeStyle = "#0000FF"; // Marking color (blue)
-  ctx.fillStyle = "#0000FF"; // Fill color for shapes
+  ctx.strokeStyle = OUTLINE_COLOR; // Marking color (blue)
+  ctx.fillStyle = mark.color; // Fill color for shapes
   ctx.lineWidth = 2;
 
-  const { type, position } = mark;
+  const { type, position, size } = mark;
 
   if (type === "circle") {
     ctx.beginPath();
@@ -86,7 +89,20 @@ function drawShape(mark) {
     ctx.fill();
   } else if (type === "square") {
     ctx.beginPath();
-    ctx.fillRect(position.x - 10, position.y - 10, 20, 20);
+    ctx.fillRect(
+      position.x - size.width / 2,
+      position.y - size.height / 2,
+      size.width,
+      size.height
+    );
+    if(mark.isSelected) {
+      ctx.strokeRect(
+        position.x - size.width / 2,
+        position.y - size.height / 2,
+        size.width,
+        size.height
+      );
+    }
   }
 }
 
@@ -95,16 +111,15 @@ let position = {
   y: null,
 };
 
+let size = {
+  width: null,
+  height: null,
+};
+
 let currentSelectedMark = null;
 // Place shape on click
 canvas.addEventListener("click", (event) => {
   if (isSessionActive) return;
-
-  if(currentSelectedMark != null) return;
-
-  // Pause the session
-  isPaused = true;
-  toggleButtons();
 
   const rect = canvas.getBoundingClientRect();
   position = {
@@ -112,75 +127,127 @@ canvas.addEventListener("click", (event) => {
     y: event.clientY - rect.top,
   };
 
-  // Save the shape and current time
-  drawShape({ type: selectedMark, position });
-
-  // show the editor
-  markEditor.style.display = "inline";
-
-   // save the shape here
-   markNameInput.value = "";
-   markDurationInput.valueAsNumber = "";
-
-  currentSelectedMark = {
-    name: markNameInput.value,
-    type: selectedMark,
-    position,
-    duration: markDurationInput.valueAsNumber,
+  size = {
+    width: 20,
+    height: 20,
   };
 
+  currentSelectedMark = findMark(position.x, position.y);
+  if (currentSelectedMark != null) {
+    // activate the editor and load the mark details
+    markEditor.style.display = "inline";
+    markNameInput.value = currentSelectedMark.name;
+    markDurationInput.valueAsNumber = currentSelectedMark.duration;
+    colorPicker.value = currentSelectedMark.color;
+    currentSelectedMark.isSelected = true;
+    markings = markings.map( mark => {
+        if(mark.id == currentSelectedMark.id) {
+          return {...mark, isSelected: true }
+        }
+        else {
+          return {...mark, isSelected: false }
+        }
+    });
+
+  } else {
+    
+    // show the editor
+    markEditor.style.display = "inline";
+    markNameInput.value = "Short";
+    markDurationInput.valueAsNumber = 2;
+
+    currentSelectedMark = {
+      id: Date.now(),
+      name: markNameInput.value,
+      duration: markDurationInput.valueAsNumber,
+      type: shape,
+      position,
+      size,
+      color: colorPicker.value,
+      isSelected: true,
+    };
+    
+    markings.forEach( mark => {
+      mark.isSelected = false;
+    });
+
+    markings.push(currentSelectedMark);
+  }
+
+  drawCourt();
 });
 
-saveMarkBtn.addEventListener("click", () => {
-  if (currentSelectedMark != null) {
-    currentSelectedMark.duration = markDurationInput.valueAsNumber;
-    currentSelectedMark.name = markNameInput.value;
-    markings.push(currentSelectedMark);
+function findMark(x, y) {
+  let result = null;
 
+  markings.forEach((mark) => {
+    if (
+      x >= mark.position.x - 10 &&
+      x <= mark.position.x + 10 &&
+      y >= mark.position.y - 10 &&
+      y <= mark.position.y + 10
+    ) {
+      result = mark;
+      return;
+    }
+  });
+
+  return result;
+}
+
+saveMarkBtn.addEventListener("click", () => {
+  // update this mark in the list
+  if (currentSelectedMark != null) {
+    markings = markings.filter((m) => m.id != currentSelectedMark.id);
+
+    currentSelectedMark.name = markNameInput.value;
+    currentSelectedMark.duration = markDurationInput.valueAsNumber;
+    currentSelectedMark.color = colorPicker.value;
+
+    markings.push(currentSelectedMark);
     currentSelectedMark = null;
-    markEditor.style.display = "none";
   }
+  markEditor.style.display = "none";
+  
+  drawCourt();
 });
 
 deleteMarkBtn.addEventListener("click", () => {
-  currentSelectedMark = null;
+  if (currentSelectedMark != null) {
+    markings = markings.filter((m) => m.id != currentSelectedMark.id);
+    currentSelectedMark = null;
+  }
   markEditor.style.display = "none";
-  clearCanvas();
+  
+  drawCourt();
 });
 
-// Start session
-/*
+// Stop session
 saveSetBtn.addEventListener("click", () => {
-  reset();
-
-  setName = sessionNameInput.value;
-
-  if (savedSets.find((s) => s.name == setName)) {
+  if (setNameInput.value == "") {
+    alert("Set name cannot be empty.");
     return;
   }
 
-  if (setName) {
-    isSessionActive = true;
-    isPaused = false;
-    startTimer();
-    toggleButtons();
+  if (setDurationInput.value == "") {
+    alert("Set duration cannot be empty.");
+    return;
   }
-});
-*/
-// Stop session
-saveSetBtn.addEventListener("click", () => {
-  if (setNameInput.value == "") return;
 
-  if (setDurationInput.value == "") return;
-
-  if (setRepositionInput.value == "") return;
+  if (setRepositionInput.value == "") {
+    alert("Set reposition time cannot be empty.");
+    return;
+  }
 
   if (savedSets.find((s) => s.name == setNameInput.value)) {
+    alert("Set name should be unique.");
     return;
   }
 
   if (markings.length == 0) {
-    console.log("no markings");
+    alert(
+      "Cannot save an empty set. The set should have 1 or more markings on the court."
+    );
     return;
   }
 
@@ -198,14 +265,9 @@ resetSetBtn.addEventListener("click", () => {
   setRepositionInput.value = "";
   markings = [];
   reset();
+  saveSetBtn.style.display = "inline";
+  
 });
-
-// Resume session
-// resumeSessionBtn.addEventListener("click", () => {
-//   isPaused = false;
-//   toggleButtons();
-//   clearCanvas();
-// });
 
 // Save session to list
 function saveSet() {
@@ -246,14 +308,18 @@ function deleteSet(set) {
 
   if (setName == set.name) {
     reset();
+    saveSetBtn.style.display = "inline";
   }
 }
 
 function replaySet(set) {
   reset();
+  saveSetBtn.style.display = "none";
 
   setName = set.name;
   setNameInput.value = set.name;
+  setDurationInput.value = set.duration;
+  setRepositionInput.value = set.reposition;
 
   repositionTime = set.reposition;
   totalTime = set.duration;
@@ -276,15 +342,17 @@ function reset() {
   markToDraw = null;
   currentSelectedMark = null;
   updateTimerDisplay();
+
   clearTimeout(markTimeout);
   clearTimeout(repositionTimeout);
-  if (timerId != null) {
-    clearInterval(timerId);
-    timerId = null;
-  }
-  clearCanvas();
-  toggleButtons();
+  clearInterval(timerId);
+  
+  setNameInput.value = "";
+  setDurationInput.value = "";
+  setRepositionInput.value = "";
   markEditor.style.display = "none";
+
+  drawCourt();
 }
 
 // Start the timer
@@ -317,10 +385,11 @@ let markTimeout = null;
 function showMarking(mark) {
   clearTimeout(repositionTimeout);
   markToDraw = mark;
-  clearCanvas();
+  drawCourt();
+
   markTimeout = setTimeout(() => {
     markToDraw = null;
-    clearCanvas();
+    drawCourt();
     startReposition();
   }, mark.duration * 1000);
 }
@@ -338,20 +407,6 @@ function formatTime(timeInSeconds) {
     2,
     "0"
   )}`;
-}
-
-// Clear canvas
-function clearCanvas() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawCourt();
-}
-
-// Toggle buttons visibility
-function toggleButtons() {
-  // startSessionBtn.style.display = isSessionActive ? "none" : "inline";
-  // endSessionBtn.style.display = isSessionActive ? "inline" : "none";
-  // resumeSessionBtn.style.display =
-  //   isSessionActive && isPaused ? "inline" : "none";
 }
 
 function disabeButtons() {
