@@ -16,7 +16,7 @@ const saveMarkBtn = document.getElementById("saveMarkBtn");
 const deleteMarkBtn = document.getElementById("deleteMarkBtn");
 const colorPicker = document.getElementById("shape-color");
 
-let shape = "square";
+let shape = "circle";
 let markings = [];
 let setName = "";
 let currentTime = 0; // elapsed time
@@ -65,7 +65,7 @@ function drawCourt() {
   ctx.strokeRect(510, 588, 150, 168); // Right service box
 
   if (isSessionActive && !isPaused) {
-    if (markToDraw != null) {
+    if (markToDraw != null && markToDraw.isVisible) {
       drawShape(markToDraw);
     }
   } else {
@@ -85,8 +85,11 @@ function drawShape(mark) {
 
   if (type === "circle") {
     ctx.beginPath();
-    ctx.arc(position.x, position.y, 20, 0, 2 * Math.PI); // Circle with radius 20
+    ctx.arc(position.x, position.y, size.width, 0, 2 * Math.PI); // Circle with radius 20
     ctx.fill();
+    if(mark.isSelected) {
+      ctx.stroke();
+    }
   } else if (type === "square") {
     ctx.beginPath();
     ctx.fillRect(
@@ -166,6 +169,7 @@ canvas.addEventListener("click", (event) => {
       size,
       color: colorPicker.value,
       isSelected: true,
+      isVisible: true,
     };
     
     markings.forEach( mark => {
@@ -183,10 +187,10 @@ function findMark(x, y) {
 
   markings.forEach((mark) => {
     if (
-      x >= mark.position.x - 10 &&
-      x <= mark.position.x + 10 &&
-      y >= mark.position.y - 10 &&
-      y <= mark.position.y + 10
+      x >= mark.position.x - mark.size.width &&
+      x <= mark.position.x + mark.size.width &&
+      y >= mark.position.y - mark.size.height &&
+      y <= mark.position.y + mark.size.height
     ) {
       result = mark;
       return;
@@ -204,6 +208,7 @@ saveMarkBtn.addEventListener("click", () => {
     currentSelectedMark.name = markNameInput.value;
     currentSelectedMark.duration = markDurationInput.valueAsNumber;
     currentSelectedMark.color = colorPicker.value;
+    currentSelectedMark.isSelected = false;
 
     markings.push(currentSelectedMark);
     currentSelectedMark = null;
@@ -272,6 +277,10 @@ resetSetBtn.addEventListener("click", () => {
 
 // Save session to list
 function saveSet() {
+  markings.forEach( mark => {
+    mark.isSelected = false;
+  });
+  
   const newSet = {
     name: setNameInput.value,
     duration: setDurationInput.value,
@@ -331,6 +340,7 @@ function replaySet(set) {
 
   startTimer();
   startReposition();
+  startBlinking();
   disabeButtons();
 }
 
@@ -347,6 +357,7 @@ function reset() {
   clearTimeout(markTimeout);
   clearTimeout(repositionTimeout);
   clearInterval(timerId);
+  clearInterval(blinkTimer);
   
   setNameInput.value = "";
   setDurationInput.value = "";
@@ -354,6 +365,16 @@ function reset() {
   markEditor.style.display = "none";
 
   drawCourt();
+}
+
+let blinkTimer = null;
+function startBlinking() {
+  blinkTimer = setInterval(() => {
+    if(markToDraw != null) {
+      markToDraw.isVisible = !markToDraw.isVisible;
+      drawCourt();
+    }
+  }, 0.25 * 1000);
 }
 
 // Start the timer
