@@ -6,20 +6,33 @@ body {
   background-position: center;
 }
 
+
+
 canvas {
   border: 1px solid #000;
   scale: 1;
   background-color: #f5deb3;
 }
 
-#mainDiv {
+#headerDiv {
   display: flex;
   flex-direction: row;
+  width: 50%;
+  border: 2px black;
+}
+
+#GameTimerDiv {
+  font-weight: bold;
+  font-size: 1.5em;
+}
+
+#mainDiv {
+  display: flex;
+  /* flex-direction: row; */
   /* justify-content: center; */
   /* align-content: center  ; */
   width: 50%;
 }
-
 
 #courtDiv {
   width: 680px;
@@ -40,6 +53,12 @@ canvas {
 
 #buttonsDiv {
   padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+#markEditor {
+  /* padding: 100px; */
+  /* border: 1px solid black; */
 }
 
 #editorDiv {

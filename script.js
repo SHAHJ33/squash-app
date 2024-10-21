@@ -1,14 +1,20 @@
 const canvas = document.getElementById("courtCanvas");
 const ctx = canvas.getContext("2d");
-const setNameInput = document.getElementById("setName");
+
+const GameTimerDiv = document.getElementById("GameTimerDiv");
+const gameTimeDisplay = document.getElementById("gameTimer");
+// const RestTimerDiv = document.getElementById("RestTimerDiv");
+// const restTimeDisplay = document.getElementById("restTimer");
+
+const setTotalInput = document.getElementById("setTotal");
 const setDurationInput = document.getElementById("setDuration");
-const setRepositionInput = document.getElementById("setReposition");
-const timerDisplay = document.getElementById("timer");
-const savedSessionsList = document.getElementById("savedSessionsList");
-const markNameInput = document.getElementById("markName");
+const setRestTimeInput = document.getElementById("setRestTime");
+const setRepositionTimeInput = document.getElementById("setRepositionTime");
+
 const markDurationInput = document.getElementById("markDuration");
 
-const saveSetBtn = document.getElementById("saveSetBtn");
+const playSetBtn = document.getElementById("playSetBtn");
+// const saveSetBtn = document.getElementById("saveSetBtn");
 const resetSetBtn = document.getElementById("resetSetBtn");
 
 const markEditor = document.getElementById("markEditor");
@@ -16,28 +22,43 @@ const saveMarkBtn = document.getElementById("saveMarkBtn");
 const deleteMarkBtn = document.getElementById("deleteMarkBtn");
 const colorPicker = document.getElementById("shape-color");
 
-let shape = "circle";
-let markings = [];
-let setName = "";
-let currentTime = 0; // elapsed time
-let totalTime = 1000;
-let repositionTime = 3;
-let isSessionActive = false;
-let timerId = null;
-let isPaused = false;
-let savedSets = [];
+const popSound = document.getElementById("popSound");
 
 const OUTLINE_COLOR = "#FF0000";
-const MARK_COLOR = "#FFFFFF"; 
+const MARK_COLOR = "#FFFFFF";
+
+let COLORS = ["#F0F0F0", "#0F0F0F", "#00FF00", "#0000FF", "#000000", "#FFFFFF"];
+
+function GetRandomColor() {
+  const hexColors = [];
+
+  for (let i = 0; i < 50; i++) {
+    hexColors.push("#" + Math.floor(Math.random() * 16777215).toString(16));
+  }
+
+  let rnd = Math.floor(Math.random() * hexColors.length);
+
+  return hexColors[rnd];
+}
+
+let markings = [];
+let totalSets = 0;
+let totalTime = 1000;
+let restTime = 0;
+let repositionTime = 3;
+let isSessionActive = false;
+let isPaused = false;
+let isResting = false;
 
 window.onload = function () {
-  reset();
+  ClearSession();
+  WriteOnCanvas("Squash Pro", 300);
 };
 
 let markToDraw = null;
 
 // Draw the court
-function drawCourt() {
+function DrawCourt() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const courtBackground = "#f5deb3"; // Light wood color
@@ -87,7 +108,7 @@ function drawShape(mark) {
     ctx.beginPath();
     ctx.arc(position.x, position.y, size.width, 0, 2 * Math.PI); // Circle with radius 20
     ctx.fill();
-    if(mark.isSelected) {
+    if (mark.isSelected) {
       ctx.stroke();
     }
   } else if (type === "square") {
@@ -98,7 +119,7 @@ function drawShape(mark) {
       size.width,
       size.height
     );
-    if(mark.isSelected) {
+    if (mark.isSelected) {
       ctx.strokeRect(
         position.x - size.width / 2,
         position.y - size.height / 2,
@@ -139,47 +160,41 @@ canvas.addEventListener("click", (event) => {
   if (currentSelectedMark != null) {
     // activate the editor and load the mark details
     markEditor.style.display = "inline";
-    markNameInput.value = currentSelectedMark.name;
     markDurationInput.valueAsNumber = currentSelectedMark.duration;
     colorPicker.value = currentSelectedMark.color;
     currentSelectedMark.isSelected = true;
-    markings = markings.map( mark => {
-        if(mark.id == currentSelectedMark.id) {
-          return {...mark, isSelected: true }
-        }
-        else {
-          return {...mark, isSelected: false }
-        }
+    markings = markings.map((mark) => {
+      if (mark.id == currentSelectedMark.id) {
+        return { ...mark, isSelected: true };
+      } else {
+        return { ...mark, isSelected: false };
+      }
     });
-
   } else {
-    
     // show the editor
     markEditor.style.display = "inline";
-    markNameInput.value = "Short";
     markDurationInput.valueAsNumber = 2;
-    colorPicker.value = MARK_COLOR;
+    colorPicker.value = GetRandomColor();
 
     currentSelectedMark = {
       id: Date.now(),
-      name: markNameInput.value,
       duration: markDurationInput.valueAsNumber,
-      type: shape,
+      type: "circle",
       position,
       size,
       color: colorPicker.value,
       isSelected: true,
       isVisible: true,
     };
-    
-    markings.forEach( mark => {
+
+    markings.forEach((mark) => {
       mark.isSelected = false;
     });
 
     markings.push(currentSelectedMark);
   }
 
-  drawCourt();
+  DrawCourt();
 });
 
 function findMark(x, y) {
@@ -205,7 +220,6 @@ saveMarkBtn.addEventListener("click", () => {
   if (currentSelectedMark != null) {
     markings = markings.filter((m) => m.id != currentSelectedMark.id);
 
-    currentSelectedMark.name = markNameInput.value;
     currentSelectedMark.duration = markDurationInput.valueAsNumber;
     currentSelectedMark.color = colorPicker.value;
     currentSelectedMark.isSelected = false;
@@ -214,8 +228,8 @@ saveMarkBtn.addEventListener("click", () => {
     currentSelectedMark = null;
   }
   markEditor.style.display = "none";
-  
-  drawCourt();
+
+  DrawCourt();
 });
 
 deleteMarkBtn.addEventListener("click", () => {
@@ -224,179 +238,209 @@ deleteMarkBtn.addEventListener("click", () => {
     currentSelectedMark = null;
   }
   markEditor.style.display = "none";
-  
-  drawCourt();
+
+  DrawCourt();
 });
 
 // Stop session
-saveSetBtn.addEventListener("click", () => {
-  if (setNameInput.value == "") {
-    alert("Set name cannot be empty.");
-    return;
+function ValidateFields() {
+  if (setTotalInput.value == "") {
+    alert("Total sets cannot be empty.");
+    return false;
   }
 
   if (setDurationInput.value == "") {
     alert("Set duration cannot be empty.");
-    return;
+    return false;
   }
 
-  if (setRepositionInput.value == "") {
-    alert("Set reposition time cannot be empty.");
-    return;
+  if (setRestTimeInput.value == "") {
+    alert("Rest time cannot be empty.");
+    return false;
   }
 
-  if (savedSets.find((s) => s.name == setNameInput.value)) {
-    alert("Set name should be unique.");
-    return;
+  if (setRepositionTimeInput.value == "") {
+    alert("Reposition time cannot be empty.");
+    return false;
   }
 
   if (markings.length == 0) {
-    alert(
-      "Cannot save an empty set. The set should have 1 or more markings on the court."
-    );
-    return;
+    alert("No markings on the court.");
+    return false;
   }
 
-  saveSet();
-  reset();
-
-  setNameInput.value = "";
-  setDurationInput.value = "";
-  setRepositionInput.value = "";
-});
+  return true;
+}
 
 resetSetBtn.addEventListener("click", () => {
-  setNameInput.value = "";
+  setTotalInput.value = "";
   setDurationInput.value = "";
-  setRepositionInput.value = "";
+  setRepositionTimeInput.value = "";
+  setRestTimeInput.value = "";
+
   markings = [];
-  reset();
-  saveSetBtn.style.display = "inline";
-  
+  ClearSession();
+  WriteOnCanvas("Squash Pro", 300);
 });
 
-// Save session to list
-function saveSet() {
-  markings.forEach( mark => {
-    mark.isSelected = false;
-  });
-  
-  const newSet = {
-    name: setNameInput.value,
-    duration: setDurationInput.value,
-    reposition: setRepositionInput.value,
-    markings,
-  };
-  savedSets.push(newSet);
-  updateSetsList();
+playSetBtn.addEventListener("click", () => {
+  if (ValidateFields()) {
+    markings.forEach((mark) => {
+      mark.isSelected = false;
+    });
+    StartSession();
+  }
+});
+
+let currentSet = 0;
+function StartSession() {
+  totalSets = setTotalInput.valueAsNumber;
+  restTime = setRestTimeInput.valueAsNumber;
+  repositionTime = setRepositionTimeInput.valueAsNumber;
+  duration = setDurationInput.valueAsNumber;
+  currentSet = 0;
+  isSessionActive = true;
+  playSetBtn.disabled = true;
+  Reset();
+  DrawCourt();
+  NextSet();
 }
 
-// Update saved sessions list
-function updateSetsList() {
-  savedSessionsList.innerHTML = "";
-  savedSets.forEach((set, index) => {
-    const li = document.createElement("li");
-    li.textContent = `${set.name} - ${formatTime(set.duration)}`;
+function ClearSession() {
+  playSetBtn.disabled = false;
+  isSessionActive = false;
+  isPaused = false;
 
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.onclick = () => deleteSet(set);
-    li.appendChild(deleteButton);
+  //markings = [];
+  markToDraw = null;
+  currentSelectedMark = null;
 
-    const loadButton = document.createElement("button");
-    loadButton.textContent = "Replay";
-    loadButton.onclick = () => replaySet(set);
-    li.appendChild(loadButton);
+  currentGameTime = 0;
+  currentRestTime = 0;
 
-    savedSessionsList.appendChild(li);
-  });
+  // RestTimerDiv.style = "display: none;";
+  GameTimerDiv.style = "display: none;";
+
+  gameTimeDisplay.textContent = formatTime(currentGameTime);
+  // restTimeDisplay.textContent = formatTime(currentRestTime);
+
+  clearInterval(gameIntervalId);
+  clearInterval(restIntervalId);
+
+  clearTimeout(markTimeout);
+  clearTimeout(repositionTimer);
+  clearInterval(blinkTimer);
+
+  markEditor.style.display = "none";
+
+  DrawCourt();
 }
 
-function deleteSet(set) {
-  savedSets = savedSets.filter((s) => s.name != set.name);
-  updateSetsList();
-
-  if (setName == set.name) {
-    reset();
-    saveSetBtn.style.display = "inline";
+function DisplayRestTime(t) {
+  if(currentSet==1) {
+    WriteOnCanvas("Game Starts", 300);
+    WriteOnCanvas(" in: " + formatSeconds(t) + " sec", 350);
+  } else {
+    WriteOnCanvas("Rest Time", 300);
+    WriteOnCanvas(formatSeconds(t).toString() + " sec", 350);
   }
 }
 
-function replaySet(set) {
-  reset();
-  saveSetBtn.style.display = "none";
-
-  setName = set.name;
-  setNameInput.value = set.name;
-  setDurationInput.value = set.duration;
-  setRepositionInput.value = set.reposition;
-
-  repositionTime = set.reposition;
-  totalTime = set.duration;
-  markings = set.markings;
-  isSessionActive = true;
-  isPaused = false;
-  currentTime = 0;
-
-  startTimer();
-  startReposition();
-  startBlinking();
-  disabeButtons();
-}
-
-function reset() {
-  isSessionActive = false;
-  isPaused = false;
-  currentTime = 0;
-  totalTime = 1000;
-  markings = [];
+function Reset() {
   markToDraw = null;
   currentSelectedMark = null;
-  updateTimerDisplay();
+
+  currentGameTime = 0;
+  currentRestTime = 0;
+
+  // RestTimerDiv.style = "display: none;";
+  GameTimerDiv.style = "display: none;";
+
+  gameTimeDisplay.textContent = formatTime(currentGameTime);
+  // restTimeDisplay.textContent = formatTime(currentRestTime);
 
   clearTimeout(markTimeout);
-  clearTimeout(repositionTimeout);
-  clearInterval(timerId);
+  clearTimeout(repositionTimer);
   clearInterval(blinkTimer);
-  
-  setNameInput.value = "";
-  setDurationInput.value = "";
-  setRepositionInput.value = "";
+
   markEditor.style.display = "none";
 
-  drawCourt();
+  isPaused = false;
+}
+
+let currentRestTime = 0;
+let restIntervalId = null;
+function NextSet() {
+  if (currentSet < totalSets) {
+    currentSet++;
+    currentRestTime = 0;
+    // RestTimerDiv.style = "display: inline;";
+    GameTimerDiv.style = "display: none;";
+    // restTimeDisplay.textContent = formatTime(currentRestTime);
+    isResting = true;
+    restIntervalId = setInterval(() => {
+      if (currentRestTime < restTime) {
+        currentRestTime += 0.1;
+        // restTimeDisplay.textContent = formatTime(currentRestTime);
+        DrawCourt();
+        DisplayRestTime(currentRestTime);
+      } else {
+        isResting = false;
+        clearInterval(restIntervalId);
+        Reset();
+        DrawCourt();
+        StartSet();
+      }
+      // show rest time
+    }, 100);
+  } else {
+    ClearSession();
+  }
+}
+
+let currentGameTime = 0;
+let gameIntervalId = null;
+// Start the timer
+function StartSet() {
+  isPaused = false;
+  currentGameTime = 0;
+  totalTime = duration;
+  // RestTimerDiv.style = "display: none;";
+  GameTimerDiv.style = "display: inline;";
+  gameTimeDisplay.textContent = formatTime(currentGameTime);
+  gameIntervalId = setInterval(() => {
+    if (currentGameTime >= totalTime) {
+      clearInterval(gameIntervalId);
+      Reset();
+      DrawCourt();
+      NextSet();
+      return;
+    }
+
+    if (isSessionActive && !isPaused) {
+      currentGameTime++;
+      gameTimeDisplay.textContent = formatTime(currentGameTime);
+    }
+  }, 1000);
+
+  startReposition();
 }
 
 let blinkTimer = null;
 function startBlinking() {
   blinkTimer = setInterval(() => {
-    if(markToDraw != null) {
+    if (markToDraw != null) {
       markToDraw.isVisible = !markToDraw.isVisible;
-      drawCourt();
+      DrawCourt();
     }
   }, 0.25 * 1000);
 }
 
-// Start the timer
-function startTimer() {
-  timerId = setInterval(() => {
-    if (currentTime >= totalTime) {
-      reset();
-      return;
-    }
-
-    if (isSessionActive && !isPaused) {
-      currentTime++;
-      updateTimerDisplay();
-    }
-  }, 1000);
-}
-
-let repositionTimeout = null;
+let repositionTimer = null;
 // 1
 function startReposition() {
   clearTimeout(markTimeout);
-  repositionTimeout = setTimeout(() => {
+  repositionTimer = setTimeout(() => {
     let rnd = Math.floor(Math.random() * markings.length);
     showMarking(markings[rnd]);
   }, repositionTime * 1000);
@@ -405,20 +449,19 @@ function startReposition() {
 let markTimeout = null;
 // 2
 function showMarking(mark) {
-  clearTimeout(repositionTimeout);
+  popSound.play();
+  clearTimeout(repositionTimer);
   markToDraw = mark;
-  drawCourt();
+  DrawCourt();
+  startBlinking();
 
+  let dT = markToDraw.duration;
   markTimeout = setTimeout(() => {
+    clearInterval(blinkTimer);
     markToDraw = null;
-    drawCourt();
+    DrawCourt();
     startReposition();
-  }, mark.duration * 1000);
-}
-
-// Update timer display
-function updateTimerDisplay() {
-  timerDisplay.textContent = formatTime(currentTime);
+  }, dT * 1000);
 }
 
 // Format time as MM:SS
@@ -431,6 +474,35 @@ function formatTime(timeInSeconds) {
   )}`;
 }
 
-function disabeButtons() {
-  saveSetBtn.style.display = "disable";
+function formatSeconds(timeInSeconds) {
+  const seconds = timeInSeconds % 60;
+  return seconds.toFixed(1).toString();
+  // return `${String(seconds).padStart(
+  //   2,
+  //   "0",
+  // )}`;
 }
+
+function formatMilli(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  const milliseconds = (seconds - minutes * 60 - remainingSeconds) * 1000;
+
+  return `${String(remainingSeconds).padStart(
+    2,
+    "0",
+  )}:${String(milliseconds).padStart(
+    2,
+    "0",
+  )}`;
+}
+
+function WriteOnCanvas(message, yPos) {
+  ctx.font = '50px Arial';
+  ctx.fillStyle = 'black';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillText(message, canvas.width/2, yPos);
+}
+

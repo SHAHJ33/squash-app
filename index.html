@@ -8,12 +8,11 @@
   </head>
 
   <body>
-    <h1>Squash Pro</h1>
-    <h2 id="timer">00:00</h2>
     <div id="mainDiv">
       <div id="controlsDiv">
-        <h4>Set Editor</h4>
-        <input type="text" id="setName" placeholder="Set Name" value="" />
+        <!-- <h4>Set Editor</h4> -->
+        <!-- <input type="text" id="setName" placeholder="Set Name" value="" /> -->
+        <input type="number" id="setTotal" placeholder="Total Sets" value="" />
         <input
           type="number"
           id="setDuration"
@@ -23,28 +22,29 @@
         />
         <input
           type="number"
-          id="setReposition"
+          id="setRestTime"
+          placeholder="Rest Time (s)"
+          value=""
+          step="0.1"
+        />
+        <input
+          type="number"
+          id="setRepositionTime"
           placeholder="Reposition Time(s)"
           value=""
           step="0.1"
         />
         <div id="buttonsDiv">
-          <button id="saveSetBtn">Save</button>
+          <button id="playSetBtn">Play</button>
           <button id="resetSetBtn">Reset</button>
         </div>
-        <div id="sessionsDiv">
-          <h4>Saved Sessions</h4>
-          <ul id="savedSessionsList"></ul>
+        <hr>
+        <div id="GameTimerDiv" style="display: none">
+          <p>Game Time:</p>
+          <p id="gameTimer">00:00</p>
         </div>
-      </div>
-      <div id="courtDiv">
-        <canvas id="courtCanvas" width="680" height="1015"></canvas>
-      </div>
-      <div id="editorDiv">
-        <h4>Mark Editor</h4>
-        <div id="markEditor" style="display: none;">
+        <div id="markEditor" style="display: none">
           <div>
-            <input type="text" id="markName" placeholder="Name" onsubmit=/>
             <input
               type="number"
               id="markDuration"
@@ -53,7 +53,7 @@
           </div>
           <div id="color-picker">
             <label for="shape-color">Color:</label>
-            <input type="color" id="shape-color" value="#FFFFFF">
+            <input type="color" id="shape-color" value="#FFFFFF" />
           </div>
           <div id="buttonsDiv">
             <button id="saveMarkBtn">Save</button>
@@ -61,7 +61,11 @@
           </div>
         </div>
       </div>
+      <div id="courtDiv">
+        <canvas id="courtCanvas" width="680" height="1015"></canvas>
+      </div>
     </div>
+    <audio id="popSound" src="click.mp3" preload="auto"></audio>
     <script src="./script.js"></script>
   </body>
 </html>
