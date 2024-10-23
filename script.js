@@ -183,7 +183,7 @@ canvas.addEventListener("click", (event) => {
   } else {
     // show the editor
     markEditor.style.display = "inline";
-    markDurationInput.valueAsNumber = 1.5;
+    markDurationInput.valueAsNumber = 1.4;
     colorPicker.value = GetRandomColor();
 
     currentSelectedMark = {
