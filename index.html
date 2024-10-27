@@ -8,37 +8,8 @@
   </head>
 
   <body>
-    <div id="mainDiv">
-      <div id="controlsDiv">
-        <!-- <h4>Set Editor</h4> -->
-        <!-- <input type="text" id="setName" placeholder="Set Name" value="" /> -->
-        <input type="number" id="setTotal" placeholder="Total Sets" value="" />
-        <input
-          type="number"
-          id="setDuration"
-          placeholder="Set Duration(s)"
-          value=""
-          step="0.1"
-        />
-        <input
-          type="number"
-          id="setRestTime"
-          placeholder="Rest Time (s)"
-          value=""
-          step="0.1"
-        />
-        <input
-          type="number"
-          id="setRepositionTime"
-          placeholder="Reposition Time(s)"
-          value=""
-          step="0.1"
-        />
-        <div id="buttonsDiv">
-          <button id="playSetBtn">Play</button>
-          <button id="resetSetBtn">Reset</button>
-        </div>
-        <hr>
+    <div id="controlsDiv">
+      <div class="infoDiv">
         <div id="GameTimerDiv" style="display: block">
           <p>Set Number:</p>
           <p id="setNumber">0</p>
@@ -46,14 +17,12 @@
           <p id="gameTimer">00:00</p>
         </div>
         <div id="markEditor" style="display: none">
-          <div>
-            <input
-              type="number"
-              id="markDuration"
-              placeholder="Duration (seconds)"
-              value="1.4"
-            />
-          </div>
+          <input
+            type="number"
+            id="markDuration"
+            placeholder="Duration (seconds)"
+            value="1.4"
+          />
           <div id="color-picker">
             <label for="shape-color">Color:</label>
             <input type="color" id="shape-color" value="#FFFFFF" />
@@ -64,9 +33,47 @@
           </div>
         </div>
       </div>
-      <div id="courtDiv">
-        <canvas id="courtCanvas" width="680" height="1015"></canvas>
+      <hr />
+      <input type="text" maxlength="20" id="setName" placeholder="Set Name" value="" />
+      <input type="number" id="setTotal" placeholder="Total Sets" value="" />
+      <input
+        type="number"
+        id="setDuration"
+        placeholder="Set Duration(s)"
+        value=""
+        step="0.1"
+      />
+      <input
+        type="number"
+        id="setRestTime"
+        placeholder="Rest Time (s)"
+        value=""
+        step="0.1"
+      />
+      <input
+        type="number"
+        id="setRepositionTime"
+        placeholder="Reposition Time(s)"
+        value=""
+        step="0.1"
+      />
+      <div id="buttonsDiv">
+        <button id="playSetBtn">Play</button>
+        <button id="resetSetBtn">Reset</button>
       </div>
+      <hr />
+      <div class="sessionsDiv" style="display: block">
+        <!-- <h4>Saved Sessions</h4> -->
+        <button id="saveSessionBtn">Save Session</button>
+        <ul id="sessionsList" class="sessionsList"></ul>
+      </div>
+    </div>
+    <div id="courtDiv">
+      <div class="menu">
+        <button>New Session</button>
+        <button>Load Session</button>
+      </div>
+      <canvas id="courtCanvas" width="680" height="1015"></canvas>
     </div>
     <audio id="popSound" src="click.mp3" preload="auto"></audio>
     <script src="./script.js"></script>

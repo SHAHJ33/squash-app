@@ -5,6 +5,11 @@ const GameTimerDiv = document.getElementById("GameTimerDiv");
 const gameTimeDisplay = document.getElementById("gameTimer");
 const setNumberDisplay = document.getElementById("setNumber");
 
+const sessionsDiv = document.getElementById("sessionsDiv");
+const saveSessionBtn = document.getElementById("saveSessionBtn");
+const sessionsList = document.getElementById("sessionsList");
+
+const setName = document.getElementById("setName");
 const setTotalInput = document.getElementById("setTotal");
 const setDurationInput = document.getElementById("setDuration");
 const setRestTimeInput = document.getElementById("setRestTime");
@@ -27,16 +32,56 @@ const MARK_COLOR = "#FFFFFF";
 
 let COLORS = ["#F0F0F0", "#0F0F0F", "#00FF00", "#0000FF", "#000000", "#FFFFFF"];
 var colorArray = [
-  '#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6', 
-  '#E6B333', '#3366E6', '#999966', '#99FF99', '#B34D4D',
-  '#80B300', '#809900', '#E6B3B3', '#6680B3', '#66991A', 
-  '#FF99E6', '#CCFF1A', '#FF1A66', '#E6331A', '#33FFCC',
-  '#66994D', '#B366CC', '#4D8000', '#B33300', '#CC80CC', 
-  '#66664D', '#991AFF', '#E666FF', '#4DB3FF', '#1AB399',
-  '#E666B3', '#33991A', '#CC9999', '#B3B31A', '#00E680', 
-  '#4D8066', '#809980', '#E6FF80', '#1AFF33', '#999933',
-  '#FF3380', '#CCCC00', '#66E64D', '#4D80CC', '#9900B3', 
-  '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6', '#6666FF'
+  "#FF6633",
+  "#FFB399",
+  "#FF33FF",
+  "#FFFF99",
+  "#00B3E6",
+  "#E6B333",
+  "#3366E6",
+  "#999966",
+  "#99FF99",
+  "#B34D4D",
+  "#80B300",
+  "#809900",
+  "#E6B3B3",
+  "#6680B3",
+  "#66991A",
+  "#FF99E6",
+  "#CCFF1A",
+  "#FF1A66",
+  "#E6331A",
+  "#33FFCC",
+  "#66994D",
+  "#B366CC",
+  "#4D8000",
+  "#B33300",
+  "#CC80CC",
+  "#66664D",
+  "#991AFF",
+  "#E666FF",
+  "#4DB3FF",
+  "#1AB399",
+  "#E666B3",
+  "#33991A",
+  "#CC9999",
+  "#B3B31A",
+  "#00E680",
+  "#4D8066",
+  "#809980",
+  "#E6FF80",
+  "#1AFF33",
+  "#999933",
+  "#FF3380",
+  "#CCCC00",
+  "#66E64D",
+  "#4D80CC",
+  "#9900B3",
+  "#E64D66",
+  "#4DB380",
+  "#FF4D4D",
+  "#99E6E6",
+  "#6666FF",
 ];
 
 function GetRandomColor() {
@@ -51,7 +96,9 @@ function GetRandomColor() {
   return hexColors[rnd];
 }
 
+let savedSessions = [];
 let markings = [];
+let sessionId = Date.now();
 let totalSets = 0;
 let totalTime = 1000;
 let restTime = 0;
@@ -61,6 +108,12 @@ let isPaused = false;
 let isResting = false;
 
 window.onload = function () {
+  const jsonString = localStorage.getItem("Sessions");
+  if (jsonString != null && jsonString.length > 0) {
+    savedSessions = JSON.parse(jsonString);
+  }
+  updateSavedSessionsList();
+
   ClearSession();
   WriteOnCanvas("Squash Pro", 300);
 };
@@ -187,7 +240,7 @@ canvas.addEventListener("click", (event) => {
     colorPicker.value = GetRandomColor();
 
     currentSelectedMark = {
-      id: Date.now(),
+      id: "MID: " + Date.now().toString(),
       duration: markDurationInput.valueAsNumber,
       type: "circle",
       position,
@@ -254,6 +307,11 @@ deleteMarkBtn.addEventListener("click", () => {
 
 // Stop session
 function ValidateFields() {
+  if (setName.value == "") {
+    alert("Set name cannot be empty.");
+    return false;
+  }
+
   if (setTotalInput.value == "") {
     alert("Total sets cannot be empty.");
     return false;
@@ -283,6 +341,7 @@ function ValidateFields() {
 }
 
 resetSetBtn.addEventListener("click", () => {
+  setName.value = "";
   setTotalInput.value = "";
   setDurationInput.value = "";
   setRepositionTimeInput.value = "";
@@ -311,6 +370,7 @@ function StartSession() {
   currentSet = 0;
   isSessionActive = true;
   playSetBtn.disabled = true;
+  saveSessionBtn.disabled = true;
   Reset();
   DrawCourt();
   NextSet();
@@ -318,8 +378,10 @@ function StartSession() {
 
 function ClearSession() {
   playSetBtn.disabled = false;
+  saveSessionBtn.disabled = false;
   isSessionActive = false;
   isPaused = false;
+  sessionId = Date.now();
 
   //markings = [];
   markToDraw = null;
@@ -346,7 +408,7 @@ function ClearSession() {
 }
 
 function DisplayRestTime(t) {
-  if(currentSet==1) {
+  if (currentSet == 1) {
     WriteOnCanvas("Game Starts", 300);
     WriteOnCanvas(" in: " + formatSeconds(t) + " sec", 350);
   } else {
@@ -496,21 +558,110 @@ function formatMilli(seconds) {
   const remainingSeconds = seconds % 60;
   const milliseconds = (seconds - minutes * 60 - remainingSeconds) * 1000;
 
-  return `${String(remainingSeconds).padStart(
-    2,
-    "0",
-  )}:${String(milliseconds).padStart(
-    2,
-    "0",
-  )}`;
+  return `${String(remainingSeconds).padStart(2, "0")}:${String(
+    milliseconds
+  ).padStart(2, "0")}`;
 }
 
 function WriteOnCanvas(message, yPos) {
-  ctx.font = '50px Arial';
-  ctx.fillStyle = 'black';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.font = "50px Arial";
+  ctx.fillStyle = "black";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-  ctx.fillText(message, canvas.width/2, yPos);
+  ctx.fillText(message, canvas.width / 2, yPos);
 }
 
+//////////
+saveSessionBtn.addEventListener("click", () => {
+  if (ValidateFields()) {
+    if (savedSessions.find((s) => s.name == setName.value)) {
+      alert("Set name should be uniquie.");
+      return;
+    }
+    markings.forEach((mark) => {
+      mark.isSelected = false;
+    });
+    saveSession();
+  }
+});
+
+function saveSession() {
+  const newSession = {
+    id: "SID: " + Date.now().toString(),
+    name: setName.value,
+    totalSets: setTotalInput.valueAsNumber,
+    duration: setDurationInput.valueAsNumber,
+    restTime: setRestTimeInput.valueAsNumber,
+    repositionTime: setRepositionTimeInput.valueAsNumber,
+    markings,
+  };
+
+  savedSessions.push(newSession);
+
+  if (savedSessions.length > 0) {
+    const jsonString = JSON.stringify(savedSessions);
+    localStorage.setItem("Sessions", jsonString);
+  } else {
+    localStorage.removeItem("Sessions");
+  }
+
+  updateSavedSessionsList();
+
+  resetSetBtn.click();
+}
+
+// Update saved sessions list
+function updateSavedSessionsList() {
+  sessionsList.innerHTML = "";
+  savedSessions.forEach((session, index) => {
+    const li = document.createElement("li");
+    li.classList = "SessionItem";
+    //li.textContent = session.name;
+
+    const pText = document.createElement("p");
+    pText.classList = "SessionItem p";
+    pText.textContent = session.name;
+    li.appendChild(pText);
+
+    const loadButton = document.createElement("button");
+    loadButton.classList = "SessionItemButtonLoad";
+    loadButton.textContent = "Load";
+    loadButton.onclick = () => loadSession(session);
+    li.appendChild(loadButton);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.classList = "SessionItemButtonDelete";
+    deleteButton.textContent = "Delete";
+    deleteButton.onclick = () => deleteSession(session);
+    li.appendChild(deleteButton);
+
+    sessionsList.appendChild(li);
+  });
+}
+
+function deleteSession(session) {
+  savedSessions = savedSessions.filter((s) => s.id != session.id);
+
+  if (savedSessions.length > 0) {
+    const jsonString = JSON.stringify(savedSessions);
+    localStorage.setItem("Sessions", jsonString);
+  } else {
+    localStorage.removeItem("Sessions");
+  }
+
+  updateSavedSessionsList();
+}
+
+function loadSession(session) {
+  setName.value = session.name;
+  setTotalInput.valueAsNumber = session.totalSets;
+  setDurationInput.valueAsNumber = session.duration;
+  setRepositionTimeInput.valueAsNumber = session.repositionTime;
+  setRestTimeInput.valueAsNumber = session.restTime;
+
+  markings = session.markings;
+  sessionId = session.id;
+
+  ClearSession();
+}
